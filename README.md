@@ -8,7 +8,7 @@ The site name, tagline, and support contact details live in [`lib/config.ts`](li
 
 ## Stack
 
-- Next.js 16.4 with Cache Components and the App Router
+- Next.js 16.4 with the App Router
 - React 19 and TypeScript
 - Tailwind CSS 4
 - Supabase Auth, Postgres, Row Level Security, and Storage
@@ -102,7 +102,7 @@ Only emails in `public.admin_users` can use the admin area or write to protected
 4. For a cover image, upload a file to the public `blog-images` bucket in Supabase Storage and paste its public URL into **Cover image URL**. Add **Cover image alt text** for accessibility.
 5. Choose **Draft** or **Published** and save.
 
-Publishing sets `published_at` if it is empty. Saving a draft clears `published_at` so it cannot appear as a public timestamp. Drafts are hidden from public pages, search, the sitemap, and article metadata.
+Publishing sets `published_at` if it is empty. Saving a draft clears `published_at` so it cannot appear as a public timestamp. Drafts are hidden from public pages, search, the sitemap, and article metadata. Saving an article revalidates the home page, blog index, blog routes, category routes, and sitemap so changes appear without a rebuild.
 
 The editor also supports inline image placeholders. Use the placeholder button in the toolbar when a screenshot still needs to be captured; the public article renders a labeled grey placeholder in the same spot.
 
@@ -132,12 +132,12 @@ app/admin/(dashboard)/   Blogs, categories, and support request tools
 components/              Shared public and admin components
 lib/
   config.ts              Site name, tagline, description, URL, support details
-  data.ts                Cached public Supabase queries
+  data.ts                Public Supabase queries
   format.ts              Date, text, search, and URL helpers
   navigation.ts          Header and footer navigation
   presenters.ts          Blog-to-card and metadata presenters
   seo.ts                 Canonical metadata and Article JSON-LD
-  supabase/              Browser, server, and proxy Supabase clients
+  supabase/              Browser, server, static, and proxy Supabase clients
 supabase/
   schema.sql             Tables, RLS, admin helper, and storage bucket
   seed.sql               Optional 15-article starter library

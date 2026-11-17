@@ -10,16 +10,16 @@ import { Pagination } from "@/components/pagination";
 import { SiteShell } from "@/components/site-shell";
 import {
   BLOG_PAGE_SIZE,
-  getCategories,
   getCategoryBySlug,
   getCategoryPage,
 } from "@/lib/data";
 import { parsePage } from "@/lib/format";
 import { toArticleCard } from "@/lib/presenters";
 import { buildMetadata } from "@/lib/seo";
+import { createStaticClient } from "@/lib/supabase/static";
 import type { Category } from "@/lib/types";
 
-export const instant = false;
+export const dynamicParams = true;
 
 type CategoryPageProps = {
   params: Promise<{ category: string }>;
@@ -27,9 +27,29 @@ type CategoryPageProps = {
 };
 
 export async function generateStaticParams() {
-  const categories = await getCategories();
+  try {
+    const supabase = createStaticClient();
 
-  return categories.map((category) => ({ category: category.slug }));
+    if (!supabase) {
+      return [];
+    }
+
+    const { data, error } = await supabase.from("categories").select("slug");
+
+    if (error) {
+      console.error("Failed to load category slugs:", error.message);
+      return [];
+    }
+
+    const rows = (data ?? []) as Array<{ slug: string }>;
+
+    return rows
+      .filter((row) => row.slug.length > 0)
+      .map((row) => ({ category: row.slug }));
+  } catch (error) {
+    console.error("Failed to load category slugs:", error);
+    return [];
+  }
 }
 
 export async function generateMetadata({

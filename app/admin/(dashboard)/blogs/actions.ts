@@ -1,9 +1,8 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { BLOG_CACHE_TAG } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { toSlug } from "@/lib/utils";
 
@@ -144,6 +143,10 @@ export async function saveBlog(
     };
   }
 
-  revalidateTag(BLOG_CACHE_TAG, { expire: 0 });
+  revalidatePath("/");
+  revalidatePath("/blog");
+  revalidatePath("/blog/[slug]", "page");
+  revalidatePath("/[category]", "page");
+  revalidatePath("/sitemap.xml");
   redirect("/admin/blogs");
 }

@@ -14,7 +14,6 @@ import { SiteShell } from "@/components/site-shell";
 import { siteConfig } from "@/lib/config";
 import {
   getBlogBySlug,
-  getPublishedBlogs,
   getRelatedBlogs,
 } from "@/lib/data";
 import { absoluteUrl, formatDate, readingTimeLabel } from "@/lib/format";
@@ -24,17 +23,41 @@ import {
   buildMetadata,
   serializeJsonLd,
 } from "@/lib/seo";
+import { createStaticClient } from "@/lib/supabase/static";
 
-export const instant = false;
+export const dynamicParams = true;
 
 type BlogArticlePageProps = {
   params: Promise<{ slug: string }>;
 };
 
 export async function generateStaticParams() {
-  const blogs = await getPublishedBlogs();
+  try {
+    const supabase = createStaticClient();
 
-  return blogs.map((blog) => ({ slug: blog.slug }));
+    if (!supabase) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("blogs")
+      .select("slug")
+      .eq("status", "published");
+
+    if (error) {
+      console.error("Failed to load published blog slugs:", error.message);
+      return [];
+    }
+
+    const rows = (data ?? []) as Array<{ slug: string }>;
+
+    return rows
+      .filter((row) => row.slug.length > 0)
+      .map((row) => ({ slug: row.slug }));
+  } catch (error) {
+    console.error("Failed to load published blog slugs:", error);
+    return [];
+  }
 }
 
 export async function generateMetadata({

@@ -1,7 +1,6 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { cacheLife, cacheTag } from "next/cache";
 
 import { sanitizeSearchTerm } from "@/lib/format";
 import type {
@@ -12,8 +11,6 @@ import type {
   CategoryRef,
 } from "@/lib/types";
 
-export const BLOG_CACHE_TAG = "blogs";
-export const CATEGORY_CACHE_TAG = "categories";
 export const BLOG_PAGE_SIZE = 9;
 export const HOME_LATEST_LIMIT = 7;
 export const HOME_CATEGORY_LIMIT = 4;
@@ -220,20 +217,12 @@ async function queryBlogList(options: {
 }
 
 export async function getCategories(): Promise<Category[]> {
-  "use cache";
-  cacheLife("days");
-  cacheTag(CATEGORY_CACHE_TAG);
-
   return queryCategories();
 }
 
 export async function getCategoryBySlug(
   slug: string,
 ): Promise<Category | null> {
-  "use cache";
-  cacheLife("days");
-  cacheTag(CATEGORY_CACHE_TAG);
-
   const categories = await queryCategories();
 
   return categories.find((category) => category.slug === slug) ?? null;
@@ -245,10 +234,6 @@ export async function getHomeData(): Promise<{
   latest: BlogListItem[];
   byCategory: Record<string, BlogListItem[]>;
 }> {
-  "use cache";
-  cacheLife("minutes");
-  cacheTag(BLOG_CACHE_TAG, CATEGORY_CACHE_TAG);
-
   const categories = await queryCategories();
 
   const [featuredResult, latestResult, ...categoryResults] = await Promise.all(
@@ -284,10 +269,6 @@ export async function getCategoryPage(
   slug: string,
   page: number,
 ): Promise<{ category: Category | null } & BlogPage> {
-  "use cache";
-  cacheLife("minutes");
-  cacheTag(BLOG_CACHE_TAG, CATEGORY_CACHE_TAG);
-
   const categories = await queryCategories();
   const category = categories.find((item) => item.slug === slug) ?? null;
 
@@ -325,10 +306,6 @@ export async function getBlogIndexPage(
     activeCategory: Category | null;
   } & BlogPage
 > {
-  "use cache";
-  cacheLife("minutes");
-  cacheTag(BLOG_CACHE_TAG, CATEGORY_CACHE_TAG);
-
   const categories = await queryCategories();
   const activeCategory = categorySlug
     ? (categories.find((category) => category.slug === categorySlug) ?? null)
@@ -351,10 +328,6 @@ export async function getBlogIndexPage(
 }
 
 export async function getBlogBySlug(slug: string): Promise<BlogDetail | null> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(BLOG_CACHE_TAG);
-
   const supabase = getClient();
 
   if (!supabase) {
@@ -387,10 +360,6 @@ export async function getRelatedBlogs(
   excludeId: string,
   limit = 3,
 ): Promise<BlogListItem[]> {
-  "use cache";
-  cacheLife("minutes");
-  cacheTag(BLOG_CACHE_TAG);
-
   const { blogs } = await queryBlogList({
     categoryId,
     excludeId,
@@ -401,10 +370,6 @@ export async function getRelatedBlogs(
 }
 
 export async function searchBlogs(term: string): Promise<BlogListItem[]> {
-  "use cache";
-  cacheLife("minutes");
-  cacheTag(BLOG_CACHE_TAG);
-
   const cleanTerm = sanitizeSearchTerm(term);
 
   if (!cleanTerm) {
@@ -417,36 +382,4 @@ export async function searchBlogs(term: string): Promise<BlogListItem[]> {
   });
 
   return blogs;
-}
-
-export async function getPublishedBlogs(): Promise<
-  Array<{
-    slug: string;
-    published_at: string | null;
-    created_at: string | null;
-  }>
-> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(BLOG_CACHE_TAG);
-
-  const supabase = getClient();
-
-  if (!supabase) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from("blogs")
-    .select("slug, published_at, created_at")
-    .eq("status", "published")
-    .order("published_at", { ascending: false, nullsFirst: false });
-
-  logError("published blogs", error);
-
-  return asRows<{
-    slug: string;
-    published_at: string | null;
-    created_at: string | null;
-  }>(data);
 }
