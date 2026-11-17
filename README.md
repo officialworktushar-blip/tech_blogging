@@ -60,9 +60,10 @@ The project name is defined in [`lib/config.ts`](lib/config.ts). Change `siteCon
 ```
 app/                    Public pages (App Router)
 app/admin/              Admin panel routes
-components/             Shared React components
+components/             Shared React components and layout shell
 lib/
-  config.ts             Site name, description, and URL
+  config.ts             Site name, tagline, description, and URL
+  navigation.ts         Header and footer link definitions
   utils.ts              cn() helper and slugify wrapper
   supabase/
     client.ts           Browser Supabase client
@@ -81,3 +82,14 @@ supabase/
 3. Put database SQL files in `supabase/migrations/` (for example, via the Supabase CLI).
 
 The Supabase browser and server clients are ready in `lib/supabase/`. The root `proxy.ts` keeps auth cookies refreshed on each request.
+
+## Design system
+
+The public site shell lives in `components/site-header.tsx` and `components/site-footer.tsx`. Design tokens (colors, fonts, container width) and base styles live in `app/globals.css`.
+
+- **Headings:** Source Serif 4
+- **UI and body text:** Inter
+- **Accent:** deep teal (`#0f766e`)
+- **Reusable components:** `ArticleCard`, `HeroFeatured`, `CategorySection`, `Breadcrumbs`, `Pagination`, `ImagePlaceholder`
+
+`ImagePlaceholder` renders a grey, correctly proportioned box with a description of the image that should go there when no real image is available.
