@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { isPublicCategorySlug } from "@/lib/data";
 import { absoluteUrl } from "@/lib/format";
 import { createStaticClient } from "@/lib/supabase/static";
 
@@ -67,7 +68,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }>;
 
     const categoryRoutes: MetadataRoute.Sitemap = categories
-      .filter((category) => category.slug.length > 0)
+      .filter(
+        (category) =>
+          category.slug.length > 0 && isPublicCategorySlug(category.slug),
+      )
       .map((category) => ({
         url: absoluteUrl(`/${category.slug}`),
         changeFrequency: "weekly",

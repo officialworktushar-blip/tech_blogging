@@ -11,9 +11,22 @@ export default function GlobalError({
   error,
   retry,
 }: {
-  error: Error & { digest?: string };
+  error: unknown;
   retry: () => void;
 }) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "Unknown error";
+  const digest =
+    error instanceof Error &&
+    "digest" in error &&
+    typeof error.digest === "string"
+      ? error.digest
+      : undefined;
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -39,6 +52,22 @@ export default function GlobalError({
             The application could not render this page. Try again, or return to
             the home page.
           </p>
+
+          {process.env.NODE_ENV === "development" ? (
+            <div className="mt-7 rounded-lg border border-line bg-surface p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">
+                Development error details
+              </p>
+              <p className="mt-2 whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground">
+                {message || "Unknown error"}
+              </p>
+              {digest ? (
+                <p className="mt-2 break-words font-mono text-xs text-muted">
+                  Digest: {digest}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <button

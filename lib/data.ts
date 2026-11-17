@@ -15,6 +15,18 @@ export const BLOG_PAGE_SIZE = 9;
 export const HOME_LATEST_LIMIT = 7;
 export const HOME_CATEGORY_LIMIT = 4;
 
+export const PUBLIC_CATEGORY_SLUGS = [
+  "windows-help",
+  "software-help",
+  "email-help",
+  "internet-help",
+  "security-help",
+] as const;
+
+export function isPublicCategorySlug(slug: string) {
+  return (PUBLIC_CATEGORY_SLUGS as readonly string[]).includes(slug);
+}
+
 const BLOG_LIST_COLUMNS =
   "id, title, subtitle, slug, description, cover_image_url, cover_image_alt, cover_image_note, author_name, published_at, created_at, category:categories(id, name, slug)";
 
@@ -144,17 +156,24 @@ async function queryCategories(): Promise<Category[]> {
     return FALLBACK_CATEGORIES;
   }
 
-  const { data, error } = await supabase
-    .from("categories")
-    .select("id, name, slug, description, sort_order")
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("id, name, slug, description, sort_order")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
 
-  logError("categories", error);
+    logError("categories", error);
 
-  const rows = asRows<Category>(data);
+    const rows = asRows<Category>(data).filter((category) =>
+      isPublicCategorySlug(category.slug),
+    );
 
-  return rows.length > 0 ? rows : FALLBACK_CATEGORIES;
+    return rows.length > 0 ? rows : FALLBACK_CATEGORIES;
+  } catch (error) {
+    console.error("[data] categories failed", error);
+    return FALLBACK_CATEGORIES;
+  }
 }
 
 async function queryBlogList(options: {
@@ -203,17 +222,22 @@ async function queryBlogList(options: {
     );
   }
 
-  const { data, count, error } = await builder
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .range(from, from + pageSize - 1);
+  try {
+    const { data, count, error } = await builder
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
 
-  logError("blogs", error);
+    logError("blogs", error);
 
-  return {
-    blogs: asRows<BlogRow>(data).map(toListItem),
-    total: count ?? 0,
-  };
+    return {
+      blogs: asRows<BlogRow>(data).map(toListItem),
+      total: count ?? 0,
+    };
+  } catch (error) {
+    console.error("[data] blogs failed", error);
+    return { blogs: [], total: 0 };
+  }
 }
 
 export async function getCategories(): Promise<Category[]> {
@@ -334,25 +358,30 @@ export async function getBlogBySlug(slug: string): Promise<BlogDetail | null> {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from("blogs")
-    .select(`${BLOG_LIST_COLUMNS}, content`)
-    .eq("status", "published")
-    .eq("slug", slug)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from("blogs")
+      .select(`${BLOG_LIST_COLUMNS}, content`)
+      .eq("status", "published")
+      .eq("slug", slug)
+      .maybeSingle();
 
-  logError("blog", error);
+    logError("blog", error);
 
-  if (!data) {
+    if (!data) {
+      return null;
+    }
+
+    const row = data as BlogRow;
+
+    return {
+      ...toListItem(row),
+      content: row.content ?? null,
+    };
+  } catch (error) {
+    console.error("[data] blog failed", error);
     return null;
   }
-
-  const row = data as BlogRow;
-
-  return {
-    ...toListItem(row),
-    content: row.content ?? null,
-  };
 }
 
 export async function getRelatedBlogs(

@@ -1,61 +1,39 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 
 import { ArticleGrid } from "@/components/article-grid";
-import { ArticleGridSkeleton } from "@/components/article-grid-skeleton";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/pagination";
 import { SiteShell } from "@/components/site-shell";
 import {
-  BLOG_PAGE_SIZE,
   getCategoryBySlug,
   getCategoryPage,
+  isPublicCategorySlug,
 } from "@/lib/data";
 import { parsePage } from "@/lib/format";
 import { toArticleCard } from "@/lib/presenters";
 import { buildMetadata } from "@/lib/seo";
-import { createStaticClient } from "@/lib/supabase/static";
-import type { Category } from "@/lib/types";
 
-export const dynamicParams = true;
+export const dynamic = "force-dynamic";
 
 type CategoryPageProps = {
   params: Promise<{ category: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export async function generateStaticParams() {
-  try {
-    const supabase = createStaticClient();
-
-    if (!supabase) {
-      return [];
-    }
-
-    const { data, error } = await supabase.from("categories").select("slug");
-
-    if (error) {
-      console.error("Failed to load category slugs:", error.message);
-      return [];
-    }
-
-    const rows = (data ?? []) as Array<{ slug: string }>;
-
-    return rows
-      .filter((row) => row.slug.length > 0)
-      .map((row) => ({ category: row.slug }));
-  } catch (error) {
-    console.error("Failed to load category slugs:", error);
-    return [];
-  }
-}
-
 export async function generateMetadata({
   params,
 }: Pick<CategoryPageProps, "params">): Promise<Metadata> {
   const { category: slug } = await params;
+
+  if (!isPublicCategorySlug(slug)) {
+    return {
+      title: "Category not found",
+      robots: { index: false, follow: false },
+    };
+  }
+
   const category = await getCategoryBySlug(slug);
 
   if (!category) {
@@ -79,11 +57,21 @@ export default async function CategoryPage({
   searchParams,
 }: CategoryPageProps) {
   const { category: slug } = await params;
+  const query = await searchParams;
+
+  if (!isPublicCategorySlug(slug)) {
+    notFound();
+  }
+
   const category = await getCategoryBySlug(slug);
 
   if (!category) {
     notFound();
   }
+
+  const page = parsePage(query.page);
+  const result = await getCategoryPage(category.slug, page);
+  const articles = result.blogs.map(toArticleCard);
 
   return (
     <SiteShell>
@@ -106,63 +94,34 @@ export default async function CategoryPage({
           ) : null}
         </header>
 
-        <Suspense
-          fallback={
-            <ArticleGridSkeleton count={BLOG_PAGE_SIZE} className="mt-10" />
-          }
-        >
-          <CategoryArticles category={category} searchParams={searchParams} />
-        </Suspense>
+        {result.total === 0 ? (
+          <EmptyState
+            className="mt-10"
+            title="No guides here yet"
+            message={`We are still writing ${category.name} walkthroughs. Try the full blog in the meantime.`}
+            actionLabel="Browse all articles"
+            actionHref="/blog"
+          />
+        ) : articles.length === 0 ? (
+          <EmptyState
+            className="mt-10"
+            title="This page is empty"
+            message="There are no more articles past this page."
+            actionLabel="Back to page 1"
+            actionHref={`/${category.slug}`}
+          />
+        ) : (
+          <>
+            <ArticleGrid articles={articles} className="mt-10" />
+            <Pagination
+              className="mt-12"
+              currentPage={Math.min(page, result.totalPages)}
+              totalPages={result.totalPages}
+              basePath={`/${category.slug}`}
+            />
+          </>
+        )}
       </main>
     </SiteShell>
-  );
-}
-
-async function CategoryArticles({
-  category,
-  searchParams,
-}: {
-  category: Category;
-  searchParams: CategoryPageProps["searchParams"];
-}) {
-  const query = await searchParams;
-  const page = parsePage(query.page);
-  const result = await getCategoryPage(category.slug, page);
-  const articles = result.blogs.map(toArticleCard);
-
-  if (result.total === 0) {
-    return (
-      <EmptyState
-        className="mt-10"
-        title="No guides here yet"
-        message={`We are still writing ${category.name} walkthroughs. Try the full blog in the meantime.`}
-        actionLabel="Browse all articles"
-        actionHref="/blog"
-      />
-    );
-  }
-
-  if (articles.length === 0) {
-    return (
-      <EmptyState
-        className="mt-10"
-        title="This page is empty"
-        message="There are no more articles past this page."
-        actionLabel="Back to page 1"
-        actionHref={`/${category.slug}`}
-      />
-    );
-  }
-
-  return (
-    <>
-      <ArticleGrid articles={articles} className="mt-10" />
-      <Pagination
-        className="mt-12"
-        currentPage={Math.min(page, result.totalPages)}
-        totalPages={result.totalPages}
-        basePath={`/${category.slug}`}
-      />
-    </>
   );
 }

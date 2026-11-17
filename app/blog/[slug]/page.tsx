@@ -23,42 +23,12 @@ import {
   buildMetadata,
   serializeJsonLd,
 } from "@/lib/seo";
-import { createStaticClient } from "@/lib/supabase/static";
 
-export const dynamicParams = true;
+export const dynamic = "force-dynamic";
 
 type BlogArticlePageProps = {
   params: Promise<{ slug: string }>;
 };
-
-export async function generateStaticParams() {
-  try {
-    const supabase = createStaticClient();
-
-    if (!supabase) {
-      return [];
-    }
-
-    const { data, error } = await supabase
-      .from("blogs")
-      .select("slug")
-      .eq("status", "published");
-
-    if (error) {
-      console.error("Failed to load published blog slugs:", error.message);
-      return [];
-    }
-
-    const rows = (data ?? []) as Array<{ slug: string }>;
-
-    return rows
-      .filter((row) => row.slug.length > 0)
-      .map((row) => ({ slug: row.slug }));
-  } catch (error) {
-    console.error("Failed to load published blog slugs:", error);
-    return [];
-  }
-}
 
 export async function generateMetadata({
   params,
