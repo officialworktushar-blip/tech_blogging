@@ -9,6 +9,7 @@ type CategorySectionProps = {
   href?: string;
   description?: string;
   articles: ArticleCardProps[];
+  emptyMessage?: string;
   className?: string;
 };
 
@@ -17,6 +18,7 @@ export function CategorySection({
   href,
   description,
   articles,
+  emptyMessage,
   className,
 }: CategorySectionProps) {
   const headingId = `${toSlug(title)}-heading`;
@@ -49,11 +51,17 @@ export function CategorySection({
         ) : null}
       </div>
 
-      <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-        {articles.map((article) => (
-          <ArticleCard key={article.href} {...article} />
-        ))}
-      </div>
+      {articles.length > 0 ? (
+        <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          {articles.map((article) => (
+            <ArticleCard key={article.href} {...article} />
+          ))}
+        </div>
+      ) : emptyMessage ? (
+        <p className="rounded-lg border border-dashed border-line bg-surface/60 px-6 py-8 text-sm leading-relaxed text-muted">
+          {emptyMessage}
+        </p>
+      ) : null}
     </section>
   );
 }

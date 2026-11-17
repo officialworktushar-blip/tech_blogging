@@ -8,6 +8,7 @@ type PaginationProps = {
   totalPages: number;
   basePath: string;
   paramName?: string;
+  query?: Record<string, string | undefined>;
   className?: string;
 };
 
@@ -48,6 +49,7 @@ export function Pagination({
   totalPages,
   basePath,
   paramName = "page",
+  query,
   className,
 }: PaginationProps) {
   if (totalPages <= 1) {
@@ -55,11 +57,23 @@ export function Pagination({
   }
 
   const hrefForPage = (page: number) => {
-    if (page === 1) {
-      return basePath;
+    const params = new URLSearchParams();
+
+    if (query) {
+      for (const [key, value] of Object.entries(query)) {
+        if (value) {
+          params.set(key, value);
+        }
+      }
     }
 
-    return `${basePath}?${paramName}=${page}`;
+    if (page > 1) {
+      params.set(paramName, String(page));
+    }
+
+    const search = params.toString();
+
+    return search ? `${basePath}?${search}` : basePath;
   };
 
   const hasPrevious = currentPage > 1;
