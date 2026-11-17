@@ -34,3 +34,12 @@ export type BlogPage = {
   page: number;
   totalPages: number;
 };
+
+export type SupportRequest = {
+  id: string;
+  name: string;
+  email: string;
+  category: string;
+  message: string;
+  created_at: string;
+};

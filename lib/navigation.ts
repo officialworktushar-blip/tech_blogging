@@ -24,6 +24,7 @@ export const adminNavigation: readonly NavItem[] = [
   { label: "All Blogs", href: "/admin/blogs" },
   { label: "Add New Blog", href: "/admin/blogs/new" },
   { label: "Categories", href: "/admin/categories" },
+  { label: "Support Requests", href: "/admin/support-requests" },
 ];
 
 export const footerNavigation = {

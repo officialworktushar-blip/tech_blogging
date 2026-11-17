@@ -7,6 +7,16 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "UTC",
+  timeZoneName: "short",
+});
+
 export function formatDate(value: string | null | undefined) {
   if (!value) {
     return null;
@@ -19,6 +29,20 @@ export function formatDate(value: string | null | undefined) {
   }
 
   return dateFormatter.format(date);
+}
+
+export function formatDateTime(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return dateTimeFormatter.format(date);
 }
 
 export function stripHtml(value: string) {

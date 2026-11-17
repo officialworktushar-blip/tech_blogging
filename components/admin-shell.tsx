@@ -5,6 +5,7 @@ import {
   FilePlus2,
   FileText,
   FolderTree,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -26,6 +27,7 @@ const navIcons: Record<string, LucideIcon> = {
   "/admin/blogs": FileText,
   "/admin/blogs/new": FilePlus2,
   "/admin/categories": FolderTree,
+  "/admin/support-requests": Inbox,
 };
 
 function matchesPath(href: string, pathname: string) {
