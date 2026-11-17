@@ -211,7 +211,7 @@ export default async function AboutPage() {
             </p>
           </div>
 
-          <ol className="mt-6 grid gap-4 sm:grid-cols-3">
+          <ol className="mt-6 grid gap-4 md:grid-cols-3">
             {editorialSteps.map((step, index) => (
               <li
                 key={step.title}
@@ -249,7 +249,7 @@ export default async function AboutPage() {
             </p>
           </div>
 
-          <ul className="mt-6 grid gap-4 sm:grid-cols-3">
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {teamMembers.map((member) => (
               <li
                 key={member.name}

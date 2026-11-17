@@ -1,7 +1,13 @@
 import { ArrowLeft, Search } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SiteShell } from "@/components/site-shell";
+
+export const metadata: Metadata = {
+  title: "Page not found",
+  robots: { index: false, follow: false },
+};
 
 export default function NotFound() {
   return (

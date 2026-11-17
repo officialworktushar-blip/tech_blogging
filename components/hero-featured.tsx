@@ -16,7 +16,7 @@ type HeroFeaturedProps = {
   imagePlaceholder?: string;
   badge?: string;
   headingLevel?: "h1" | "h2";
-  priority?: boolean;
+  preload?: boolean;
   className?: string;
 };
 
@@ -31,7 +31,7 @@ export function HeroFeatured({
   imagePlaceholder,
   badge = "Featured guide",
   headingLevel = "h2",
-  priority = true,
+  preload = true,
   className,
 }: HeroFeaturedProps) {
   const Heading = headingLevel;
@@ -57,7 +57,7 @@ export function HeroFeatured({
               src={imageSrc}
               alt={imageAlt ?? ""}
               fill
-              priority={priority}
+              preload={preload}
               sizes="(min-width: 1024px) 58vw, 100vw"
               className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
             />

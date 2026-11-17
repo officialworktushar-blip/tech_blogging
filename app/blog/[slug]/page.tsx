@@ -19,7 +19,11 @@ import {
 } from "@/lib/data";
 import { absoluteUrl, formatDate, readingTimeLabel } from "@/lib/format";
 import { blogMetaDescription, toArticleCard } from "@/lib/presenters";
-import { buildMetadata } from "@/lib/seo";
+import {
+  buildArticleJsonLd,
+  buildMetadata,
+  serializeJsonLd,
+} from "@/lib/seo";
 
 export const instant = false;
 
@@ -75,6 +79,7 @@ export default async function BlogArticlePage({
   const publishedAt = blog.published_at ?? blog.created_at;
   const publishedLabel = formatDate(publishedAt);
   const shareUrl = absoluteUrl(`/blog/${blog.slug}`);
+  const articleJsonLd = serializeJsonLd(buildArticleJsonLd(blog));
 
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: "Home", href: "/" },
@@ -87,6 +92,10 @@ export default async function BlogArticlePage({
 
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: articleJsonLd }}
+      />
       <main className="container-page pb-16 pt-8 sm:pt-10 lg:pt-12">
         <Breadcrumbs items={breadcrumbItems} />
 
@@ -141,7 +150,7 @@ export default async function BlogArticlePage({
                   src={blog.cover_image_url}
                   alt={blog.cover_image_alt ?? blog.title}
                   fill
-                  priority
+                  preload
                   sizes="(min-width: 1024px) 768px, 100vw"
                   className="object-cover"
                 />

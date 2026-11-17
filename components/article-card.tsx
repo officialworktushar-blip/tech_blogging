@@ -13,7 +13,7 @@ export type ArticleCardProps = {
   imageSrc?: string;
   imageAlt?: string;
   imagePlaceholder?: string;
-  priority?: boolean;
+  preload?: boolean;
   className?: string;
 };
 
@@ -26,7 +26,7 @@ export function ArticleCard({
   imageSrc,
   imageAlt,
   imagePlaceholder,
-  priority = false,
+  preload = false,
   className,
 }: ArticleCardProps) {
   return (
@@ -43,7 +43,7 @@ export function ArticleCard({
               src={imageSrc}
               alt={imageAlt ?? ""}
               fill
-              priority={priority}
+              preload={preload}
               sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
               className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
             />

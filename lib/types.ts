@@ -43,3 +43,33 @@ export type SupportRequest = {
   message: string;
   created_at: string;
 };
+
+export type AdminBlog = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  slug: string;
+  description: string | null;
+  content: string | null;
+  category_id: number | null;
+  cover_image_url: string | null;
+  cover_image_alt: string | null;
+  cover_image_note: string | null;
+  author_name: string | null;
+  status: "draft" | "published";
+  is_featured: boolean;
+  published_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type AdminBlogListItem = {
+  id: string;
+  title: string;
+  slug: string;
+  status: "draft" | "published";
+  is_featured: boolean;
+  published_at: string | null;
+  created_at: string | null;
+  category: CategoryRef | null;
+};

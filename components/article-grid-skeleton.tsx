@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-const skeletonBar = "rounded bg-line/80";
+const skeletonBar = "animate-pulse rounded bg-line/80";
 
 export function ArticleGridSkeleton({
   count = 6,
@@ -18,7 +18,7 @@ export function ArticleGridSkeleton({
       >
         {Array.from({ length: count }, (_, index) => (
           <div key={index} className="flex flex-col">
-            <div className="aspect-[3/2] w-full rounded-md border border-line bg-surface" />
+            <div className="aspect-[3/2] w-full animate-pulse rounded-md border border-line bg-surface" />
             <div className={cn(skeletonBar, "mt-4 h-3 w-20")} />
             <div className={cn(skeletonBar, "mt-3 h-5 w-11/12")} />
             <div className={cn(skeletonBar, "mt-2 h-5 w-3/4")} />
