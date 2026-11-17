@@ -19,6 +19,13 @@ export const mainNavigation: readonly NavItem[] = [
   { label: "About Us", href: "/about-us" },
 ];
 
+export const adminNavigation: readonly NavItem[] = [
+  { label: "Dashboard", href: "/admin" },
+  { label: "All Blogs", href: "/admin/blogs" },
+  { label: "Add New Blog", href: "/admin/blogs/new" },
+  { label: "Categories", href: "/admin/categories" },
+];
+
 export const footerNavigation = {
   categories: [
     ...helpCategories,
