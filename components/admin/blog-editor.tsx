@@ -135,7 +135,7 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
           HTMLAttributes: { rel: "noopener noreferrer nofollow" },
         },
       }),
-      Image.configure({ allowBase64: false }),
+      Image.configure({ allowBase64: false, inline: false }),
       ImagePlaceholderNode,
     ],
     content: blog?.content ?? "",

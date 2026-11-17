@@ -13,6 +13,7 @@ export function ImagePlaceholderView({
   editor,
   getPos,
 }: ReactNodeViewProps) {
+  const id = typeof node.attrs.id === "string" ? node.attrs.id : "";
   const description =
     typeof node.attrs.description === "string" ? node.attrs.description : "";
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,23 +30,58 @@ export function ImagePlaceholderView({
 
     try {
       const uploaded = await uploadImage(file, "content");
-      const from = getPos();
+      const pos = getPos();
 
-      if (typeof from === "number") {
-        editor
-          .chain()
-          .focus()
-          .deleteRange({ from, to: from + node.nodeSize })
-          .setImage({ src: uploaded.url, alt: description })
-          .run();
-      } else {
-        editor
-          .chain()
-          .focus()
-          .deleteNode("imagePlaceholder")
-          .setImage({ src: uploaded.url, alt: description })
-          .run();
+      if (typeof pos !== "number") {
+        throw new Error("The image box position is unavailable. Try again.");
       }
+
+      let targetPos = pos;
+      let targetNode = editor.state.doc.nodeAt(pos);
+
+      if (!targetNode || targetNode.type.name !== "imagePlaceholder") {
+        let found = false;
+
+        editor.state.doc.descendants((candidate, candidatePos) => {
+          if (found || candidate.type.name !== "imagePlaceholder") {
+            return;
+          }
+
+          const candidateId =
+            typeof candidate.attrs.id === "string" ? candidate.attrs.id : "";
+          const candidateDescription =
+            typeof candidate.attrs.description === "string"
+              ? candidate.attrs.description
+              : "";
+
+          if (
+            (id && candidateId === id) ||
+            (!id && candidateDescription === description)
+          ) {
+            targetPos = candidatePos;
+            targetNode = candidate;
+            found = true;
+          }
+        });
+      }
+
+      if (!targetNode || targetNode.type.name !== "imagePlaceholder") {
+        throw new Error("The image box could no longer be found. Try again.");
+      }
+
+      const targetDescription =
+        typeof targetNode.attrs.description === "string"
+          ? targetNode.attrs.description
+          : description;
+
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(
+          { from: targetPos, to: targetPos + targetNode.nodeSize },
+          { type: "image", attrs: { src: uploaded.url, alt: targetDescription } },
+        )
+        .run();
     } catch (uploadError) {
       setError(
         uploadError instanceof Error
