@@ -66,8 +66,9 @@ If Supabase variables are missing, public pages render their empty states and th
 Open your Supabase project, go to **SQL Editor -> New query**, and run these files in order:
 
 1. `supabase/schema.sql` creates the tables, indexes, admin helper, RLS policies, and the public `blog-images` storage bucket. It is idempotent and safe to run again.
-2. `supabase/seed.sql` is optional. It inserts 15 published starter articles, three per category, with detailed image notes and inline image placeholders.
-3. `supabase/schema_support.sql` creates `public.support_requests` and its RLS policies. Run this after `schema.sql`.
+2. `supabase/storage_policies.sql` pins the bucket to public, 5 MB, JPG/PNG/WebP only, with public SELECT and admin-only INSERT/UPDATE/DELETE. Safe to re-run.
+3. `supabase/seed.sql` is optional. It inserts 15 published starter articles, three per category, with detailed image notes and inline image placeholders.
+4. `supabase/schema_support.sql` creates `public.support_requests` and its RLS policies. Run this after `schema.sql`.
 
 The schema creates:
 
@@ -99,12 +100,13 @@ Only emails in `public.admin_users` can use the admin area or write to protected
 1. Sign in at `/admin/login`.
 2. Go to **All Blogs -> Add new blog**.
 3. Fill in the title, description, body, category, author, and publish controls. The slug is generated from the title unless you provide one.
-4. For a cover image, upload a file to the public `blog-images` bucket in Supabase Storage and paste its public URL into **Cover image URL**. Add **Cover image alt text** for accessibility.
-5. Choose **Draft** or **Published** and save.
+4. For a cover image, click or drag a JPG, PNG, or WebP file (max 5 MB) into the **Cover image** box. It is resized to 1600 px and converted to WebP in the browser, then uploaded directly to the `blog-images` bucket as `covers/<timestamp>-<random>.webp`. No URL is needed. Add **Alt text** for accessibility. Use **Image note / mockup suggestion** to describe artwork that is not ready yet.
+5. Insert content images with the toolbar image button, paste image files, or drop files into the editor. They upload to `content/<timestamp>-<random>.webp` and are inserted at the cursor. Placeholder blocks can be replaced by clicking one and using the replace-placeholder button.
+6. Choose **Draft** or **Published** and save.
 
 Publishing sets `published_at` if it is empty. Saving a draft clears `published_at` so it cannot appear as a public timestamp. Drafts are hidden from public pages, search, the sitemap, and article metadata. Saving an article revalidates the home page, blog index, blog routes, category routes, and sitemap so changes appear without a rebuild.
 
-The editor also supports inline image placeholders. Use the placeholder button in the toolbar when a screenshot still needs to be captured; the public article renders a labeled grey placeholder in the same spot.
+The editor also supports inline image placeholders. Use the placeholder button when a screenshot still needs to be captured; the public article renders a labeled grey placeholder in the same spot. Click a placeholder and use "Replace selected image placeholder" to upload a real image in its place. Deleting a blog also removes its stored cover and content images.
 
 ## Scripts
 

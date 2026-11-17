@@ -69,6 +69,8 @@ export type AdminBlogListItem = {
   slug: string;
   status: "draft" | "published";
   is_featured: boolean;
+  cover_image_url: string | null;
+  content: string | null;
   published_at: string | null;
   created_at: string | null;
   category: CategoryRef | null;

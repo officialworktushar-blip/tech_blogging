@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { DeleteBlogButton } from "@/components/admin/delete-blog-button";
 import { formatDate } from "@/lib/format";
 
 import { getAdminBlogs } from "./data";
@@ -138,6 +139,12 @@ async function BlogList() {
               >
                 Edit
               </Link>
+              <DeleteBlogButton
+                id={blog.id}
+                title={blog.title}
+                coverUrl={blog.cover_image_url}
+                content={blog.content}
+              />
             </div>
           </li>
         ))}

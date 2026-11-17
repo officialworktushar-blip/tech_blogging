@@ -37,7 +37,7 @@ export async function getAdminBlogs(): Promise<{
   const { data, error } = await supabase
     .from("blogs")
     .select(
-      "id, title, slug, status, is_featured, published_at, created_at, category:categories(id, name, slug)",
+      "id, title, slug, status, is_featured, cover_image_url, content, published_at, created_at, category:categories(id, name, slug)",
     )
     .order("created_at", { ascending: false });
 
@@ -52,6 +52,8 @@ export async function getAdminBlogs(): Promise<{
     slug: row.slug,
     status: row.status,
     is_featured: row.is_featured,
+    cover_image_url: row.cover_image_url,
+    content: row.content,
     published_at: row.published_at,
     created_at: row.created_at,
     category: normalizeCategory(row.category as CategoryJoin),

@@ -5,14 +5,17 @@ import {
   mergeAttributes,
   Node,
   useEditor,
+  type Editor,
 } from "@tiptap/react";
 import Image from "@tiptap/extension-image";
 import StarterKit from "@tiptap/starter-kit";
 import {
   Bold,
+  FileImage,
   Heading2,
   Heading3,
   ImagePlus,
+  ImageUp,
   Italic,
   List,
   ListOrdered,
@@ -23,13 +26,16 @@ import {
   Undo2,
 } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useRef, useState, type ReactNode } from "react";
 
 import {
   saveBlog,
   type BlogFormState,
 } from "@/app/admin/(dashboard)/blogs/actions";
+import { CoverImageUpload } from "@/components/admin/cover-image-upload";
+import { DeleteBlogButton } from "@/components/admin/delete-blog-button";
 import type { AdminBlog, Category } from "@/lib/types";
+import { uploadImage } from "@/lib/uploadImage";
 import { cn } from "@/lib/utils";
 
 const initialState: BlogFormState = { status: "idle" };
@@ -39,26 +45,49 @@ const fieldClass =
 const labelClass = "block text-sm font-medium text-foreground";
 const hintClass = "mt-1 text-xs leading-relaxed text-subtle";
 
-function pastedImageUrl(text: string) {
-  const trimmed = text.trim();
+function imageFilesFrom(files: FileList | null | undefined) {
+  return Array.from(files ?? []).filter((file) =>
+    file.type.startsWith("image/"),
+  );
+}
 
-  if (!/^https?:\/\//i.test(trimmed) || /\s/.test(trimmed)) {
-    return null;
+function altFromFileName(name: string) {
+  const alt = name
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
+
+  return alt || "Article image";
+}
+
+function replacePlaceholderWithImage(editor: Editor, src: string, alt: string) {
+  const { state } = editor;
+  let from = -1;
+  let to = -1;
+
+  for (let depth = state.selection.$from.depth; depth > 0; depth -= 1) {
+    if (state.selection.$from.node(depth).type.name === "imagePlaceholder") {
+      from = state.selection.$from.before(depth);
+      to = state.selection.$from.after(depth);
+      break;
+    }
   }
 
-  try {
-    const url = new URL(trimmed);
-    const looksLikeImage = /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(
-      url.pathname,
-    );
-    const isSupabasePublicPath = url.pathname.startsWith(
-      "/storage/v1/object/public/",
-    );
-
-    return looksLikeImage || isSupabasePublicPath ? url.toString() : null;
-  } catch {
-    return null;
+  if (from === -1) {
+    state.doc.descendants((node, pos) => {
+      if (from === -1 && node.type.name === "imagePlaceholder") {
+        from = pos;
+        to = pos + node.nodeSize;
+      }
+    });
   }
+
+  if (from === -1) {
+    editor.chain().focus().setImage({ src, alt }).run();
+    return;
+  }
+
+  editor.chain().focus().deleteRange({ from, to }).setImage({ src, alt }).run();
 }
 
 const ImagePlaceholderNode = Node.create({
@@ -136,6 +165,15 @@ function ToolbarButton({
 export function BlogEditor({ blog, categories }: BlogEditorProps) {
   const [state, formAction, isPending] = useActionState(saveBlog, initialState);
   const [content, setContent] = useState(blog?.content ?? "");
+  const [coverUrl, setCoverUrl] = useState(blog?.cover_image_url ?? "");
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [contentBusy, setContentBusy] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
+  const contentInputRef = useRef<HTMLInputElement>(null);
+  const contentModeRef = useRef<"insert" | "replace">("insert");
+  const uploadContentRef = useRef<
+    (files: File[], replacePlaceholder: boolean) => Promise<void>
+  >(async () => {});
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -158,14 +196,45 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
         "aria-label": "Article content",
       },
       handlePaste: (_view, event) => {
-        const text = event.clipboardData?.getData("text/plain");
-        const imageUrl = text ? pastedImageUrl(text) : null;
+        const files = imageFilesFrom(event.clipboardData?.files);
 
-        if (!imageUrl || !editor) {
+        if (files.length === 0) {
           return false;
         }
 
-        editor.chain().focus().setImage({ src: imageUrl, alt: "" }).run();
+        event.preventDefault();
+        void uploadContentRef.current(files, true);
+
+        return true;
+      },
+      handleDrop: (_view, event) => {
+        const files = imageFilesFrom(
+          (event as DragEvent).dataTransfer?.files,
+        );
+
+        if (files.length === 0) {
+          return false;
+        }
+
+        event.preventDefault();
+        void uploadContentRef.current(files, true);
+
+        return true;
+      },
+      handleClick: (view, _pos, event) => {
+        const target = event.target as HTMLElement | null;
+        const placeholder = target?.closest?.(".image-placeholder");
+
+        if (!placeholder) {
+          return false;
+        }
+
+        try {
+          const nodePos = view.posAtDOM(placeholder, 0);
+          editor?.commands.setTextSelection(nodePos + 1);
+        } catch {
+          return false;
+        }
 
         return true;
       },
@@ -185,10 +254,55 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
       .run();
   };
 
+  const uploadContentImages = async (
+    files: File[],
+    replacePlaceholder: boolean,
+  ) => {
+    if (!editor || files.length === 0) {
+      return;
+    }
+
+    setContentError(null);
+    setContentBusy(true);
+
+    try {
+      for (const file of files) {
+        const uploaded = await uploadImage(file, "content");
+        const alt = altFromFileName(file.name);
+
+        if (replacePlaceholder) {
+          replacePlaceholderWithImage(editor, uploaded.url, alt);
+        } else {
+          editor.chain().focus().setImage({ src: uploaded.url, alt }).run();
+        }
+      }
+    } catch (uploadError) {
+      setContentError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "The image could not be uploaded. Try again.",
+      );
+    } finally {
+      setContentBusy(false);
+
+      if (contentInputRef.current) {
+        contentInputRef.current.value = "";
+      }
+    }
+  };
+
+  uploadContentRef.current = uploadContentImages;
+
+  const openContentPicker = (mode: "insert" | "replace") => {
+    contentModeRef.current = mode;
+    contentInputRef.current?.click();
+  };
+
   return (
     <form action={formAction} className="mt-6">
       <input type="hidden" name="id" value={blog?.id ?? ""} />
       <input type="hidden" name="content" value={content} />
+      <input type="hidden" name="cover_image_url" value={coverUrl} />
 
       {state.status === "error" && state.message ? (
         <p
@@ -272,13 +386,29 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
           </section>
 
           <section className="rounded-lg border border-line bg-background">
+            <input
+              ref={contentInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+              multiple
+              className="hidden"
+              aria-label="Content image files"
+              onChange={(event) =>
+                void uploadContentImages(
+                  imageFilesFrom(event.target.files),
+                  contentModeRef.current === "replace",
+                )
+              }
+            />
+
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
               <div>
                 <h2 className="font-serif text-lg font-bold text-foreground">
                   Content
                 </h2>
                 <p className="text-xs text-subtle">
-                  Use headings, lists, and image placeholder blocks.
+                  Upload images directly, or use placeholders and replace them
+                  later.
                 </p>
               </div>
               <button
@@ -366,6 +496,25 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
                 className="mx-1 h-6 w-px bg-line"
               />
               <ToolbarButton
+                label="Insert image from device"
+                disabled={!editor || contentBusy}
+                onClick={() => openContentPicker("insert")}
+              >
+                <FileImage aria-hidden="true" className="size-4" />
+              </ToolbarButton>
+              <ToolbarButton
+                label="Replace selected image placeholder"
+                active={editor?.isActive("imagePlaceholder")}
+                disabled={!editor || contentBusy}
+                onClick={() => openContentPicker("replace")}
+              >
+                <ImageUp aria-hidden="true" className="size-4" />
+              </ToolbarButton>
+              <span
+                aria-hidden="true"
+                className="mx-1 h-6 w-px bg-line"
+              />
+              <ToolbarButton
                 label="Undo"
                 disabled={!editor}
                 onClick={() => editor?.chain().focus().undo().run()}
@@ -380,6 +529,22 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
                 <Redo2 aria-hidden="true" className="size-4" />
               </ToolbarButton>
             </div>
+
+            {contentBusy ? (
+              <p className="flex items-center gap-2 border-b border-line px-4 py-2 text-xs font-medium text-accent">
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                Uploading image…
+              </p>
+            ) : null}
+
+            {contentError ? (
+              <p
+                role="alert"
+                className="border-b border-line px-4 py-2 text-xs font-medium text-red-700"
+              >
+                {contentError}
+              </p>
+            ) : null}
 
             <div className="admin-editor-shell">
               {editor ? (
@@ -496,24 +661,18 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
               Cover image
             </h2>
             <p className={hintClass}>
-              Leave the URL blank to show a grey image placeholder based on the
-              note below.
+              Upload a JPG, PNG, or WebP file (max 5 MB). It is resized and
+              converted automatically — no URL needed. Remove the image to show
+              the placeholder based on the note below.
             </p>
 
             <div className="mt-4 space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="cover_image_url" className={labelClass}>
-                  Image URL
-                </label>
-                <input
-                  id="cover_image_url"
-                  name="cover_image_url"
-                  type="url"
-                  defaultValue={blog?.cover_image_url ?? ""}
-                  placeholder="https://…"
-                  className={cn(fieldClass, "h-11")}
-                />
-              </div>
+              <CoverImageUpload
+                value={coverUrl}
+                onChange={setCoverUrl}
+                onBusyChange={setCoverBusy}
+                disabled={isPending}
+              />
 
               <div className="space-y-1.5">
                 <label htmlFor="cover_image_alt" className={labelClass}>
@@ -531,7 +690,7 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
 
               <div className="space-y-1.5">
                 <label htmlFor="cover_image_note" className={labelClass}>
-                  Image note
+                  Image note / mockup suggestion
                 </label>
                 <textarea
                   id="cover_image_note"
@@ -550,15 +709,19 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
       <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-line pt-5">
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || coverBusy || contentBusy}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-accent px-5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {isPending ? (
+          {isPending || coverBusy || contentBusy ? (
             <Loader2 aria-hidden="true" className="size-4 animate-spin" />
           ) : (
             <Save aria-hidden="true" className="size-4" />
           )}
-          {isPending ? "Saving…" : "Save blog"}
+          {isPending
+            ? "Saving…"
+            : coverBusy || contentBusy
+              ? "Uploading…"
+              : "Save blog"}
         </button>
 
         <Link
@@ -567,6 +730,17 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
         >
           Cancel
         </Link>
+
+        {blog ? (
+          <DeleteBlogButton
+            id={blog.id}
+            title={blog.title}
+            coverUrl={coverUrl}
+            content={content}
+            redirectAfterDelete
+            className="ml-auto"
+          />
+        ) : null}
 
         {blog?.status === "published" ? (
           <Link
