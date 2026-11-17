@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  EditorContent,
-  mergeAttributes,
-  Node,
-  useEditor,
-  type Editor,
-} from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import Image from "@tiptap/extension-image";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -15,7 +9,6 @@ import {
   Heading2,
   Heading3,
   ImagePlus,
-  ImageUp,
   Italic,
   List,
   ListOrdered,
@@ -34,6 +27,10 @@ import {
 } from "@/app/admin/(dashboard)/blogs/actions";
 import { CoverImageUpload } from "@/components/admin/cover-image-upload";
 import { DeleteBlogButton } from "@/components/admin/delete-blog-button";
+import {
+  DEFAULT_IMAGE_PLACEHOLDER_DESCRIPTION,
+  ImagePlaceholderNode,
+} from "@/components/admin/image-placeholder-node";
 import type { AdminBlog, Category } from "@/lib/types";
 import { uploadImage } from "@/lib/uploadImage";
 import { cn } from "@/lib/utils";
@@ -59,53 +56,6 @@ function altFromFileName(name: string) {
 
   return alt || "Article image";
 }
-
-function replacePlaceholderWithImage(editor: Editor, src: string, alt: string) {
-  const { state } = editor;
-  let from = -1;
-  let to = -1;
-
-  for (let depth = state.selection.$from.depth; depth > 0; depth -= 1) {
-    if (state.selection.$from.node(depth).type.name === "imagePlaceholder") {
-      from = state.selection.$from.before(depth);
-      to = state.selection.$from.after(depth);
-      break;
-    }
-  }
-
-  if (from === -1) {
-    state.doc.descendants((node, pos) => {
-      if (from === -1 && node.type.name === "imagePlaceholder") {
-        from = pos;
-        to = pos + node.nodeSize;
-      }
-    });
-  }
-
-  if (from === -1) {
-    editor.chain().focus().setImage({ src, alt }).run();
-    return;
-  }
-
-  editor.chain().focus().deleteRange({ from, to }).setImage({ src, alt }).run();
-}
-
-const ImagePlaceholderNode = Node.create({
-  name: "imagePlaceholder",
-  group: "block",
-  content: "inline*",
-  defining: true,
-  parseHTML() {
-    return [{ tag: "div.image-placeholder" }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, { class: "image-placeholder" }),
-      0,
-    ];
-  },
-});
 
 type BlogEditorProps = {
   blog?: AdminBlog;
@@ -170,10 +120,9 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
   const [contentBusy, setContentBusy] = useState(false);
   const [contentError, setContentError] = useState<string | null>(null);
   const contentInputRef = useRef<HTMLInputElement>(null);
-  const contentModeRef = useRef<"insert" | "replace">("insert");
-  const uploadContentRef = useRef<
-    (files: File[], replacePlaceholder: boolean) => Promise<void>
-  >(async () => {});
+  const uploadContentRef = useRef<(files: File[]) => Promise<void>>(
+    async () => {},
+  );
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -203,7 +152,7 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
         }
 
         event.preventDefault();
-        void uploadContentRef.current(files, true);
+        void uploadContentRef.current(files);
 
         return true;
       },
@@ -217,24 +166,7 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
         }
 
         event.preventDefault();
-        void uploadContentRef.current(files, true);
-
-        return true;
-      },
-      handleClick: (view, _pos, event) => {
-        const target = event.target as HTMLElement | null;
-        const placeholder = target?.closest?.(".image-placeholder");
-
-        if (!placeholder) {
-          return false;
-        }
-
-        try {
-          const nodePos = view.posAtDOM(placeholder, 0);
-          editor?.commands.setTextSelection(nodePos + 1);
-        } catch {
-          return false;
-        }
+        void uploadContentRef.current(files);
 
         return true;
       },
@@ -248,16 +180,14 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
     editor
       ?.chain()
       .focus()
-      .insertContent(
-        '<div class="image-placeholder">Describe the screenshot, photo, or mockup needed here.</div>',
-      )
+      .insertContent({
+        type: "imagePlaceholder",
+        attrs: { description: DEFAULT_IMAGE_PLACEHOLDER_DESCRIPTION },
+      })
       .run();
   };
 
-  const uploadContentImages = async (
-    files: File[],
-    replacePlaceholder: boolean,
-  ) => {
+  const uploadContentImages = async (files: File[]) => {
     if (!editor || files.length === 0) {
       return;
     }
@@ -270,11 +200,7 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
         const uploaded = await uploadImage(file, "content");
         const alt = altFromFileName(file.name);
 
-        if (replacePlaceholder) {
-          replacePlaceholderWithImage(editor, uploaded.url, alt);
-        } else {
-          editor.chain().focus().setImage({ src: uploaded.url, alt }).run();
-        }
+        editor.chain().focus().setImage({ src: uploaded.url, alt }).run();
       }
     } catch (uploadError) {
       setContentError(
@@ -293,8 +219,7 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
 
   uploadContentRef.current = uploadContentImages;
 
-  const openContentPicker = (mode: "insert" | "replace") => {
-    contentModeRef.current = mode;
+  const openContentPicker = () => {
     contentInputRef.current?.click();
   };
 
@@ -394,32 +319,17 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
               className="hidden"
               aria-label="Content image files"
               onChange={(event) =>
-                void uploadContentImages(
-                  imageFilesFrom(event.target.files),
-                  contentModeRef.current === "replace",
-                )
+                void uploadContentImages(imageFilesFrom(event.target.files))
               }
             />
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
-              <div>
-                <h2 className="font-serif text-lg font-bold text-foreground">
-                  Content
-                </h2>
-                <p className="text-xs text-subtle">
-                  Upload images directly, or use placeholders and replace them
-                  later.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={insertPlaceholder}
-                disabled={!editor}
-                className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ImagePlus aria-hidden="true" className="size-4" />
-                Image placeholder
-              </button>
+            <div className="border-b border-line px-4 py-3 sm:px-5">
+              <h2 className="font-serif text-lg font-bold text-foreground">
+                Content
+              </h2>
+              <p className="text-xs text-subtle">
+                Upload images directly, or add an image box and replace it later.
+              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-1 border-b border-line bg-surface/70 px-2 py-2">
@@ -498,17 +408,16 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
               <ToolbarButton
                 label="Insert image from device"
                 disabled={!editor || contentBusy}
-                onClick={() => openContentPicker("insert")}
+                onClick={() => openContentPicker()}
               >
                 <FileImage aria-hidden="true" className="size-4" />
               </ToolbarButton>
               <ToolbarButton
-                label="Replace selected image placeholder"
-                active={editor?.isActive("imagePlaceholder")}
-                disabled={!editor || contentBusy}
-                onClick={() => openContentPicker("replace")}
+                label="Add image box"
+                disabled={!editor}
+                onClick={insertPlaceholder}
               >
-                <ImageUp aria-hidden="true" className="size-4" />
+                <ImagePlus aria-hidden="true" className="size-4" />
               </ToolbarButton>
               <span
                 aria-hidden="true"
