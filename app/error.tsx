@@ -6,26 +6,12 @@ import { useEffect } from "react";
 
 import { SiteShell } from "@/components/site-shell";
 
-export default function Error({
-  error,
-  retry,
-}: {
-  error: unknown;
-  retry: () => void;
-}) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : "Unknown error";
-  const digest =
-    error instanceof Error &&
-    "digest" in error &&
-    typeof error.digest === "string"
-      ? error.digest
-      : undefined;
+type ErrorProps = {
+  error: Error & { digest?: string };
+  reset: () => void;
+};
 
+export default function ErrorPage({ error, reset }: ErrorProps) {
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -50,11 +36,11 @@ export default function Error({
               Development error details
             </p>
             <p className="mt-2 whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-foreground">
-              {message || "Unknown error"}
+              {error.message || "Unknown error"}
             </p>
-            {digest ? (
+            {error.digest ? (
               <p className="mt-2 break-words font-mono text-xs text-muted">
-                Digest: {digest}
+                Digest: {error.digest}
               </p>
             ) : null}
           </div>
@@ -63,7 +49,7 @@ export default function Error({
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => retry()}
+            onClick={() => reset()}
             className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-strong"
           >
             <RotateCcw aria-hidden="true" className="size-4" />
