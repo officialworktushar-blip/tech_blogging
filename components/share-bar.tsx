@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Link2, Mail, Share2 } from "lucide-react";
+import { Check, Link2, Share2 } from "lucide-react";
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -16,8 +16,6 @@ const actionClass =
 
 export function ShareBar({ url, title, className }: ShareBarProps) {
   const [copied, setCopied] = useState(false);
-  const encodedUrl = encodeURIComponent(url);
-  const encodedTitle = encodeURIComponent(title);
 
   const copyLink = async () => {
     try {
@@ -44,44 +42,10 @@ export function ShareBar({ url, title, className }: ShareBarProps) {
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-subtle">
+      <button type="button" onClick={nativeShare} className={actionClass}>
+        <Share2 aria-hidden="true" className="size-3.5" />
         Share
-      </span>
-
-      <a
-        href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={actionClass}
-      >
-        X
-      </a>
-
-      <a
-        href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={actionClass}
-      >
-        Facebook
-      </a>
-
-      <a
-        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={actionClass}
-      >
-        LinkedIn
-      </a>
-
-      <a
-        href={`mailto:?subject=${encodedTitle}&body=${encodedUrl}`}
-        className={actionClass}
-      >
-        <Mail aria-hidden="true" className="size-3.5" />
-        Email
-      </a>
+      </button>
 
       <button type="button" onClick={copyLink} className={actionClass}>
         {copied ? (
@@ -89,16 +53,7 @@ export function ShareBar({ url, title, className }: ShareBarProps) {
         ) : (
           <Link2 aria-hidden="true" className="size-3.5" />
         )}
-        {copied ? "Copied" : "Copy link"}
-      </button>
-
-      <button
-        type="button"
-        onClick={nativeShare}
-        className={cn(actionClass, "sm:hidden")}
-      >
-        <Share2 aria-hidden="true" className="size-3.5" />
-        Share
+        Copy
       </button>
     </div>
   );

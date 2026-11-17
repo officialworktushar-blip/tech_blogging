@@ -39,6 +39,28 @@ const fieldClass =
 const labelClass = "block text-sm font-medium text-foreground";
 const hintClass = "mt-1 text-xs leading-relaxed text-subtle";
 
+function pastedImageUrl(text: string) {
+  const trimmed = text.trim();
+
+  if (!/^https?:\/\//i.test(trimmed) || /\s/.test(trimmed)) {
+    return null;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const looksLikeImage = /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(
+      url.pathname,
+    );
+    const isSupabasePublicPath = url.pathname.startsWith(
+      "/storage/v1/object/public/",
+    );
+
+    return looksLikeImage || isSupabasePublicPath ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 const ImagePlaceholderNode = Node.create({
   name: "imagePlaceholder",
   group: "block",
@@ -134,6 +156,18 @@ export function BlogEditor({ blog, categories }: BlogEditorProps) {
       attributes: {
         class: "article-content admin-editor-content",
         "aria-label": "Article content",
+      },
+      handlePaste: (_view, event) => {
+        const text = event.clipboardData?.getData("text/plain");
+        const imageUrl = text ? pastedImageUrl(text) : null;
+
+        if (!imageUrl || !editor) {
+          return false;
+        }
+
+        editor.chain().focus().setImage({ src: imageUrl, alt: "" }).run();
+
+        return true;
       },
     },
     onUpdate: ({ editor: currentEditor }) => {

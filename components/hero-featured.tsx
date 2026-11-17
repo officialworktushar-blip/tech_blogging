@@ -57,6 +57,7 @@ export function HeroFeatured({
               src={imageSrc}
               alt={imageAlt ?? ""}
               fill
+              unoptimized
               preload={preload}
               sizes="(min-width: 1024px) 58vw, 100vw"
               className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"

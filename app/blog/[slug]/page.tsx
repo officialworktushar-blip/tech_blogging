@@ -143,6 +143,7 @@ export default async function BlogArticlePage({
                   src={blog.cover_image_url}
                   alt={blog.cover_image_alt ?? blog.title}
                   fill
+                  unoptimized
                   preload
                   sizes="(min-width: 1024px) 768px, 100vw"
                   className="object-cover"

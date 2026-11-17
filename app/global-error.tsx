@@ -1,6 +1,7 @@
 "use client";
 
 import { Home, RotateCcw } from "lucide-react";
+import Link from "next/link";
 import { useEffect } from "react";
 
 import { siteConfig } from "@/lib/config";
@@ -65,13 +66,13 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               Try again
             </button>
 
-            <a
+            <Link
               href="/"
               className="inline-flex items-center gap-2 rounded-md border border-line px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent"
             >
               <Home aria-hidden="true" className="size-4" />
               Back to home
-            </a>
+            </Link>
           </div>
         </main>
       </body>
